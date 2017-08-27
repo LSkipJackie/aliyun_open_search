@@ -1,9 +1,11 @@
+require 'net/http'
+
 module AliyunOpenSearch
   class Search < Base
     attr_reader :index_names
 
-    def initialize(*index_names)
-      super()
+    def initialize(option, *index_names)
+      super(option)
 
       @index_names = index_names.join(";")
     end
@@ -14,7 +16,7 @@ module AliyunOpenSearch
       )
 
       Net::HTTP.get(
-        uri(params.merge("Signature" => Search.signature(params)))
+        uri(params.merge("Signature" => signature(params)))
       )
     end
   end

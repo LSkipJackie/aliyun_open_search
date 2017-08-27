@@ -1,5 +1,8 @@
 require "base64"
 require "json"
+require "time"
+require 'cgi'
+require 'openssl'
 
 module AliyunOpenSearch
   class Base
@@ -9,10 +12,12 @@ module AliyunOpenSearch
       attr_accessor :request_method
     end
 
-    def initialize
-      @basic_params = Base.basic_params
+    # @param [Hash] {:endpoint => opensearch的域名, :access_key_id, :access_key_secret}
+    def initialize(option)
+      @option = option
+      @basic_params = basic_params
 
-      @base_url = "#{ENV["OPEN_SEARCH_HOST"]}/search"
+      @base_url = "#{@option[:endpoint]}/search"
     end
 
     def uri(special_base_url = nil, params)
@@ -30,9 +35,9 @@ module AliyunOpenSearch
       @request_method ||= "GET"
     end
 
-    def self.signature(params)
-      params =  params.sort_by { |k, _v| k.to_s }
-                .map do |arr|
+    def signature(params)
+      params = params.sort_by {|k, _v| k.to_s}
+                 .map do |arr|
         str = if arr[1].is_a?(String) || arr[1].is_a?(Fixnum)
                 arr[1].to_s
               else
@@ -45,20 +50,20 @@ module AliyunOpenSearch
       Base64.encode64(
         OpenSSL::HMAC.digest(
           OpenSSL::Digest.new("sha1"),
-          "#{ENV["ACCESS_KEY_SECRET"]}&",
-          request_method + "&" + CGI.escape("/") + "&" + Base.escape(params)
+          "#{@option[:access_key_secret]}&",
+          self.class.request_method + "&" + CGI.escape("/") + "&" + Base.escape(params)
         )
       ).strip
     end
 
-    def self.basic_params
+    def basic_params
       {
         "Version" => "v2",
-        "AccessKeyId" => ENV.fetch("ACCESS_KEY_ID"),
+        "AccessKeyId" => @option[:access_key_id],
         "SignatureMethod" => "HMAC-SHA1",
         "Timestamp" => Time.now.utc.iso8601,
         "SignatureVersion" => "1.0",
-        "SignatureNonce" => signature_nonce
+        "SignatureNonce" => self.class.signature_nonce
       }
     end
 
@@ -70,11 +75,11 @@ module AliyunOpenSearch
     def self.format_params(method = :get, params)
       {}.tap do |hash|
         params.map do |key, value|
-          hash[key.to_s] =  if value.is_a?(Array)
-                              method == :get ? value.join("&&") : JSON.generate(value)
-                            else
-                              value.to_s
-                            end
+          hash[key.to_s] = if value.is_a?(Array)
+                             method == :get ? value.join("&&") : JSON.generate(value)
+                           else
+                             value.to_s
+                           end
         end
       end
     end
