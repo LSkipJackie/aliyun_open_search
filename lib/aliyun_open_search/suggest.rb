@@ -2,9 +2,9 @@ module AliyunOpenSearch
   class Suggest < Base
     attr_reader :index_names
 
-    def initialize(index_names)
-      super()
-      @base_url = "#{ENV["OPEN_SEARCH_HOST"]}/suggest"
+    def initialize(option, index_names)
+      super(option)
+      @base_url = "#{option[:endpoint]}/suggest"
       @index_names = index_names
     end
 
@@ -14,7 +14,7 @@ module AliyunOpenSearch
       )
 
       Net::HTTP.get(
-        uri(params.merge("Signature" => Suggest.signature(params)))
+        uri(params.merge("Signature" => signature(params)))
       )
     end
   end
